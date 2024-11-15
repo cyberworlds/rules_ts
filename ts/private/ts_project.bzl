@@ -319,6 +319,10 @@ This is an error because Bazel does not run actions unless their outputs are nee
             # https://bazel.build/extending/rules#validations_output_group
             # "hold the otherwise unused outputs of validation actions"
             _validation = validation_outs,
+            # NOTE(calebmer): We need access to the source files of
+            # `ts_project()` rules to run a repository wide TypeScript
+            # check test.
+            srcs = srcs_inputs,
         ),
         coverage_common.instrumented_files_info(
             ctx,
