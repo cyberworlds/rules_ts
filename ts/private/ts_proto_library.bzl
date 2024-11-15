@@ -1,18 +1,13 @@
 "Private implementation details for ts_proto_library"
 
 load("@aspect_bazel_lib//lib:copy_to_bin.bzl", "COPY_FILE_TO_BIN_TOOLCHAINS")
-load("@aspect_rules_js//js:libs.bzl", "js_lib_helpers")
-load("@aspect_rules_js//js:providers.bzl", "JsInfo", "js_info")
 load("@rules_proto//proto:defs.bzl", "ProtoInfo", "proto_common")
 load("@rules_proto//proto:proto_common.bzl", proto_toolchains = "toolchains")
 
 _PROTO_TOOLCHAIN_TYPE = "@rules_proto//proto:toolchain_type"
 
 # buildifier: disable=function-docstring-header
-def _protoc_action(ctx, proto_info, outputs, options = {
-    "keep_empty_files": True,
-    "target": "js+dts",
-}):
+def _protoc_action(ctx, proto_info, outputs):
     """Create an action like
     bazel-out/k8-opt-exec-2B5CBBC6/bin/external/com_google_protobuf/protoc $@' '' \
       '--plugin=protoc-gen-es=bazel-out/k8-opt-exec-2B5CBBC6/bin/plugin/bufbuild/protoc-gen-es.sh' \
@@ -22,6 +17,16 @@ def _protoc_action(ctx, proto_info, outputs, options = {
       example/person/person.proto
     """
     inputs = depset(proto_info.direct_sources, transitive = [proto_info.transitive_descriptor_sets])
+
+    options = dict({
+        "keep_empty_files": True,
+        "target": "js+dts",
+    }, **ctx.attr.protoc_gen_options)
+
+    if not options["keep_empty_files"]:
+        fail("protoc_gen_options.keep_empty_files must be True")
+    if options["target"] != "js+dts":
+        fail("protoc_gen_options.target must be 'js+dts'")
 
     args = ctx.actions.args()
     args.add_joined(["--plugin", "protoc-gen-es", ctx.executable.protoc_gen_es.path], join_with = "=")
@@ -81,41 +86,15 @@ def _ts_proto_library_impl(ctx):
 
     _protoc_action(ctx, info, js_outs + dts_outs)
 
-    direct_srcs = depset(js_outs)
-    direct_decls = depset(dts_outs)
-
     return [
         DefaultInfo(
-            files = direct_srcs,
-            runfiles = js_lib_helpers.gather_runfiles(
-                ctx = ctx,
-                sources = direct_srcs,
-                data = [],
-                deps = ctx.attr.deps,
-            ),
-        ),
-        OutputGroupInfo(types = direct_decls),
-        js_info(
-            declarations = direct_decls,
-            sources = direct_srcs,
-            transitive_declarations = js_lib_helpers.gather_transitive_declarations(
-                declarations = dts_outs,
-                targets = ctx.attr.deps,
-            ),
-            transitive_sources = js_lib_helpers.gather_transitive_sources(
-                sources = js_outs,
-                targets = ctx.attr.deps,
-            ),
+            files = depset(js_outs + dts_outs),
         ),
     ]
 
 ts_proto_library = rule(
     implementation = _ts_proto_library_impl,
     attrs = dict({
-        "deps": attr.label_list(
-            providers = [JsInfo],
-            doc = "Other ts_proto_library rules. TODO: could we collect them with an aspect",
-        ),
         "gen_connect_es": attr.bool(
             doc = "whether to generate service stubs with gen-connect-es",
             default = True,
@@ -132,6 +111,10 @@ ts_proto_library = rule(
             doc = "proto_library to generate JS/DTS for",
             providers = [ProtoInfo],
             mandatory = True,
+        ),
+        "protoc_gen_options": attr.string_dict(
+            doc = "dict of protoc_gen_es options",
+            default = {},
         ),
         "protoc_gen_es": attr.label(
             doc = "protoc plugin to generate messages",

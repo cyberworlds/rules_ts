@@ -4,7 +4,7 @@ Users should *not* need to install these. If users see a load()
 statement from these, that's a bug in our distribution.
 """
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", _http_archive = "http_archive")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_jar", _http_archive = "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("//.github/workflows:deps.bzl", "aspect_workflows_github_actions_deps")
 
@@ -33,8 +33,11 @@ def rules_ts_internal_deps():
 
     http_archive(
         name = "io_bazel_stardoc",
-        sha256 = "62bd2e60216b7a6fec3ac79341aa201e0956477e7c8f6ccc286f279ad1d96432",
-        urls = ["https://github.com/bazelbuild/stardoc/releases/download/0.6.2/stardoc-0.6.2.tar.gz"],
+        sha256 = "fabb280f6c92a3b55eed89a918ca91e39fb733373c81e87a18ae9e33e75023ec",
+        urls = [
+            "https://mirror.bazel.build/github.com/bazelbuild/stardoc/releases/download/0.7.1/stardoc-0.7.1.tar.gz",
+            "https://github.com/bazelbuild/stardoc/releases/download/0.7.1/stardoc-0.7.1.tar.gz",
+        ],
     )
 
     http_archive(
@@ -46,9 +49,9 @@ def rules_ts_internal_deps():
 
     http_archive(
         name = "rules_proto",
-        sha256 = "303e86e722a520f6f326a50b41cfc16b98fe6d1955ce46642a5b7a67c11c0f5d",
-        strip_prefix = "rules_proto-6.0.0",
-        url = "https://github.com/bazelbuild/rules_proto/releases/download/6.0.0/rules_proto-6.0.0.tar.gz",
+        sha256 = "6fb6767d1bef535310547e03247f7518b03487740c11b6c6adb7952033fe1295",
+        strip_prefix = "rules_proto-6.0.2",
+        url = "https://github.com/bazelbuild/rules_proto/releases/download/6.0.2/rules_proto-6.0.2.tar.gz",
     )
 
     http_archive(
@@ -66,10 +69,25 @@ def rules_ts_internal_deps():
     )
 
     http_archive(
-        name = "aspect_rules_swc",
-        sha256 = "b647c7c31feeb7f9330fff08b45f8afe7de674d3a9c89c712b8f9d1723d0c8f9",
-        strip_prefix = "rules_swc-1.0.1",
-        url = "https://github.com/aspect-build/rules_swc/releases/download/v1.0.1/rules_swc-v1.0.1.tar.gz",
+        name = "toolchains_protoc",
+        sha256 = "117af61ee2f1b9b014dcac7c9146f374875551abb8a30e51d1b3c5946d25b142",
+        strip_prefix = "toolchains_protoc-0.3.0",
+        url = "https://github.com/aspect-build/toolchains_protoc/releases/download/v0.3.0/toolchains_protoc-v0.3.0.tar.gz",
+    )
+
+    http_archive(
+        name = "rules_java",
+        urls = [
+            "https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz",
+        ],
+        sha256 = "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
+    )
+
+    # Needed for stardoc to compile from Java sources
+    http_jar(
+        name = "protobuf-java",
+        integrity = "sha256-kHLmD+Zs/11sDxGh3yHY8+Sym17ngrRcP8dfWfviuDk=",
+        urls = ["https://repo1.maven.org/maven2/com/google/protobuf/protobuf-java/4.27.0/protobuf-java-4.27.0.jar"],
     )
 
     aspect_workflows_github_actions_deps()

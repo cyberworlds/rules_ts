@@ -34,30 +34,32 @@ def _ts_config_impl(ctx):
 
     transitive_deps = [
         depset(copy_files_to_bin_actions(ctx, ctx.files.deps)),
-        js_lib_helpers.gather_files_from_js_providers(
+        js_lib_helpers.gather_files_from_js_infos(
             targets = ctx.attr.deps,
+            include_sources = True,
+            include_types = True,
             include_transitive_sources = True,
-            include_declarations = True,
-            include_npm_linked_packages = True,
+            include_transitive_types = True,
+            include_npm_sources = True,
         ),
     ]
 
     # TODO: now that ts_config.bzl provides a JsInfo, we should be able to remove TsConfigInfo in the future
-    # since transitive files will now be passed through transitive_declarations in JsInfo
+    # since transitive files will now be passed through transitive_types in JsInfo
     for dep in ctx.attr.deps:
         if TsConfigInfo in dep:
             transitive_deps.append(dep[TsConfigInfo].deps)
 
     transitive_sources = js_lib_helpers.gather_transitive_sources([], ctx.attr.deps)
 
-    transitive_declarations = js_lib_helpers.gather_transitive_declarations(files, ctx.attr.deps)
+    transitive_types = js_lib_helpers.gather_transitive_types(files, ctx.attr.deps)
 
-    npm_linked_packages = js_lib_helpers.gather_npm_linked_packages(
+    npm_sources = js_lib_helpers.gather_npm_sources(
         srcs = [],
         deps = ctx.attr.deps,
     )
 
-    npm_package_store_deps = js_lib_helpers.gather_npm_package_store_deps(
+    npm_package_store_infos = js_lib_helpers.gather_npm_package_store_infos(
         targets = ctx.attr.deps,
     )
 
@@ -76,17 +78,15 @@ def _ts_config_impl(ctx):
             runfiles = runfiles,
         ),
         js_info(
-            # provide tsconfig.json file via `declarations` and not `sources` since they are only needed
+            # provide tsconfig.json file via `types` and not `sources` since they are only needed
             # for downstream ts_project rules and not in downstream runtime binary rules
-            declarations = files_depset,
-            npm_linked_package_files = npm_linked_packages.direct_files,
-            npm_linked_packages = npm_linked_packages.direct,
-            npm_package_store_deps = npm_package_store_deps,
+            target = ctx.label,
             sources = depset(),
-            transitive_declarations = transitive_declarations,
-            transitive_npm_linked_package_files = npm_linked_packages.transitive_files,
-            transitive_npm_linked_packages = npm_linked_packages.transitive,
+            types = files_depset,
             transitive_sources = transitive_sources,
+            transitive_types = transitive_types,
+            npm_sources = npm_sources,
+            npm_package_store_infos = npm_package_store_infos,
         ),
         TsConfigInfo(deps = depset(files, transitive = transitive_deps)),
     ]
@@ -114,17 +114,9 @@ extended configuration file as well, to pass them both to the TypeScript compile
     toolchains = COPY_FILE_TO_BIN_TOOLCHAINS,
 )
 
-def _filter_input_files(files, allow_js, resolve_json_module):
-    return [
-        f
-        for f in files
-        # include typescript, json & declaration sources
-        if _lib.is_ts_src(f.basename, allow_js, resolve_json_module) or _lib.is_typings_src(f.basename)
-    ]
-
 def _write_tsconfig_rule(ctx):
     # TODO: is it useful to expand Make variables in the content?
-    content = "\n".join(ctx.attr.content)
+    content = ctx.attr.content
     if ctx.attr.extends:
         # Unlike other paths in the tsconfig file, the "extends" property
         # is documented: "The path may use Node.js style resolution."
@@ -135,12 +127,30 @@ def _write_tsconfig_rule(ctx):
             extends_path = "./" + extends_path
         content = content.replace("__extends__", extends_path)
 
-    filtered_files = _filter_input_files(ctx.files.files, ctx.attr.allow_js, ctx.attr.resolve_json_module)
-    if filtered_files:
-        content = content.replace(
-            "\"__files__\"",
-            str([relative_file(f.short_path, ctx.outputs.out.short_path) for f in filtered_files]),
-        )
+    # The prefix of source files that are within the same package as the tsconfig file.
+    local_package_prefix = "%s/" % ctx.label.package if ctx.label.package else ""
+    if (len(ctx.label.repo_name) > 0):
+        # If the target is inside another workspace the prefix also contains the navigation to that workspace.
+        local_package_prefix = "../{}/{}".format(ctx.label.repo_name, local_package_prefix)
+
+    # The path to navigate to the root of the workspace
+    path_to_root = "/".join([".."] * (ctx.label.package.count("/") + 1))
+
+    # Compute the list of source files with paths relative to the generated tsconfig file.
+    src_files = []
+    for f in ctx.files.files:
+        # Only include typescript source files
+        if not (_lib.is_ts_src(f.basename, ctx.attr.allow_js, ctx.attr.resolve_json_module) or _lib.is_typings_src(f.basename)):
+            continue
+
+        if f.short_path.startswith(local_package_prefix):
+            # Files within this project or subdirs can avoid the ugly ../ prefix
+            src_files.append("./{}".format(f.short_path.removeprefix(local_package_prefix)))
+        else:
+            # Files from parent/sibling projects must navigate up to the workspace root
+            src_files.append("./{}/{}".format(path_to_root, f.short_path))
+
+    content = content.replace("\"__files__\"", str(src_files))
     ctx.actions.write(
         output = ctx.outputs.out,
         content = content,
@@ -150,7 +160,7 @@ def _write_tsconfig_rule(ctx):
 write_tsconfig_rule = rule(
     implementation = _write_tsconfig_rule,
     attrs = {
-        "content": attr.string_list(),
+        "content": attr.string(),
         "extends": attr.label(allow_single_file = True),
         "files": attr.label_list(allow_files = True),
         "out": attr.output(),
@@ -187,7 +197,7 @@ def write_tsconfig(name, config, files, out, extends = None, allow_js = None, re
         name = name,
         files = files,
         extends = extends,
-        content = [json.encode(amended_config)],
+        content = json.encode(amended_config),
         out = out,
         allow_js = allow_js,
         resolve_json_module = resolve_json_module,

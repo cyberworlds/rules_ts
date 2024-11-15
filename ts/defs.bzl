@@ -4,30 +4,15 @@ The most commonly used is the [ts_project](#ts_project) macro which accepts Type
 inputs and produces JavaScript or declaration (.d.ts) outputs.
 """
 
-load("@aspect_bazel_lib//lib:copy_to_bin.bzl", "COPY_FILE_TO_BIN_TOOLCHAINS")
 load("@aspect_bazel_lib//lib:utils.bzl", "to_label")
-load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("@bazel_skylib//lib:partial.bzl", "partial")
 load("//ts/private:build_test.bzl", "build_test")
 load("//ts/private:ts_config.bzl", "write_tsconfig", _TsConfigInfo = "TsConfigInfo", _ts_config = "ts_config")
 load("//ts/private:ts_lib.bzl", _lib = "lib")
 load("//ts/private:ts_project.bzl", _ts_project = "ts_project")
-load("//ts/private:ts_validate_options.bzl", validate_lib = "lib")
 
 ts_config = _ts_config
 TsConfigInfo = _TsConfigInfo
-
-# TODO(3.0): remove this rule; not needed with validation actions
-validate_options = rule(
-    doc = """DEPRECATED. Use Validation Actions instead.
-    
-    Validates that some tsconfig.json properties match attributes on ts_project.
-    See the documentation of [`ts_project`](#ts_project) for more information.""",
-    implementation = validate_lib.implementation,
-    attrs = validate_lib.attrs,
-    toolchains = COPY_FILE_TO_BIN_TOOLCHAINS,
-)
-
 ts_project_rule = _ts_project
 
 def _is_file_missing(label):
@@ -38,7 +23,7 @@ def _is_file_missing(label):
     """
     file_abs = "%s/%s" % (label.package, label.name)
     file_rel = file_abs[len(native.package_name()) + 1:]
-    file_glob = native.glob([file_rel])
+    file_glob = native.glob([file_rel], allow_empty = True)
     return len(file_glob) == 0
 
 _tsc = "@npm_typescript//:tsc"
@@ -54,6 +39,7 @@ def ts_project(
         assets = [],
         extends = None,
         allow_js = False,
+        isolated_typecheck = False,
         declaration = False,
         source_map = False,
         declaration_map = False,
@@ -61,8 +47,10 @@ def ts_project(
         preserve_jsx = False,
         composite = False,
         incremental = False,
+        no_emit = False,
         emit_declaration_only = False,
         transpiler = None,
+        declaration_transpiler = None,
         ts_build_info_file = None,
         tsc = _tsc,
         tsc_worker = _tsc_worker,
@@ -166,6 +154,10 @@ def ts_project(
             See https://www.typescriptlang.org/docs/handbook/compiler-options.html#compiler-options
             Typically useful arguments for debugging are `--listFiles` and `--listEmittedFiles`.
 
+        isolated_typecheck: Whether to type-check asynchronously as a separate bazel action.
+            Requires https://devblogs.microsoft.com/typescript/announcing-typescript-5-6/#the---nocheck-option6
+            Requires https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-5.html#isolated-declarations
+
         transpiler: A custom transpiler tool to run that produces the JavaScript outputs instead of `tsc`.
 
             Under `--@aspect_rules_ts//ts:default_to_tsc_transpiler`, the default is to use `tsc` to produce
@@ -177,6 +169,18 @@ def ts_project(
             This may be the string `"tsc"` to explicitly choose `tsc`, just like the default above.
 
             It may also be any rule or macro with this signature: `(name, srcs, **kwargs)`
+
+            If JavaScript outputs are configured to not be emitted the custom transpiler will not be used, such as
+            when `no_emit = True` or `emit_declaration_only = True`.
+
+            See [docs/transpiler.md](/docs/transpiler.md) for more details.
+
+        declaration_transpiler: A custom transpiler tool to run that produces the TypeScript declaration outputs instead of `tsc`.
+
+            It may be any rule or macro with this signature: `(name, srcs, **kwargs)`
+
+            If TypeScript declaration outputs are configured to not be emitted the custom declaration transpiler will
+            not be used, such as when `no_emit = True` or `declaration = False`.
 
             See [docs/transpiler.md](/docs/transpiler.md) for more details.
 
@@ -229,6 +233,8 @@ def ts_project(
             Instructs Bazel to expect a `.tsbuildinfo` output and a `.d.ts` output for each `.ts` source.
         incremental: Whether the `incremental` bit is set in the tsconfig.
             Instructs Bazel to expect a `.tsbuildinfo` output.
+        no_emit: Whether the `noEmit` bit is set in the tsconfig.
+            Instructs Bazel *not* to expect any outputs.
         emit_declaration_only: Whether the `emitDeclarationOnly` bit is set in the tsconfig.
             Instructs Bazel *not* to expect `.js` or `.js.map` outputs for `.ts` sources.
         ts_build_info_file: The user-specified value of `tsBuildInfoFile` from the tsconfig.
@@ -254,15 +260,6 @@ def ts_project(
         **kwargs: passed through to underlying [`ts_project_rule`](#ts_project_rule), eg. `visibility`, `tags`
     """
 
-    if srcs == None:
-        include = ["**/*.ts", "**/*.tsx"]
-        exclude = []
-        if allow_js == True:
-            include.extend(["**/*.js", "**/*.jsx"])
-        if resolve_json_module == True:
-            include.append("**/*.json")
-            exclude.extend(["**/package.json", "**/package-lock.json", "**/tsconfig*.json"])
-        srcs = native.glob(include, exclude)
     tsc_deps = deps
 
     common_kwargs = {
@@ -290,19 +287,23 @@ def ts_project(
         source_map = compiler_options.setdefault("sourceMap", source_map)
         declaration = compiler_options.setdefault("declaration", declaration)
         declaration_map = compiler_options.setdefault("declarationMap", declaration_map)
+        no_emit = compiler_options.setdefault("noEmit", no_emit)
         emit_declaration_only = compiler_options.setdefault("emitDeclarationOnly", emit_declaration_only)
         allow_js = compiler_options.setdefault("allowJs", allow_js)
-        if resolve_json_module != None:
-            resolve_json_module = compiler_options.setdefault("resolveJsonModule", resolve_json_module)
+        resolve_json_module = compiler_options.setdefault("resolveJsonModule", resolve_json_module)
 
         # These options are always passed on the tsc command line so don't include them
         # in the tsconfig. At best they're redundant, but at worst we'll have a conflict
-        if "outDir" in compiler_options.keys():
-            out_dir = compiler_options.pop("outDir")
-        if "declarationDir" in compiler_options.keys():
-            declaration_dir = compiler_options.pop("declarationDir")
-        if "rootDir" in compiler_options.keys():
-            root_dir = compiler_options.pop("rootDir")
+        out_dir = compiler_options.pop("outDir", out_dir)
+        declaration_dir = compiler_options.pop("declarationDir", declaration_dir)
+        root_dir = compiler_options.pop("rootDir", root_dir)
+
+        if srcs == None:
+            # Default sources based on macro attributes after applying tsconfig properties
+            srcs = _default_srcs(
+                allow_js = allow_js,
+                resolve_json_module = resolve_json_module,
+            )
 
         # FIXME: need to remove keys that have a None value?
         write_tsconfig(
@@ -319,51 +320,80 @@ def ts_project(
         # From here, tsconfig becomes a file, the same as if the
         # user supplied a tsconfig.json InputArtifact
         tsconfig = "tsconfig_%s.json" % name
+    elif srcs == None:
+        # Default sources based on macro attributes
+        srcs = _default_srcs(
+            allow_js = allow_js,
+            resolve_json_module = resolve_json_module,
+        )
 
     typings_out_dir = declaration_dir if declaration_dir else out_dir
     tsbuildinfo_path = ts_build_info_file if ts_build_info_file else name + ".tsbuildinfo"
 
-    assets_outs = _lib.calculate_assets_outs(assets, out_dir, root_dir)
+    # Flags for what is emitted and which tool is emitting them
+    emit_js = not no_emit and not emit_declaration_only
+    emit_dts = not no_emit and (declaration or emit_declaration_only)
+    emit_transpiler_js = emit_js and transpiler and transpiler != "tsc"
+    emit_transpiler_dts = emit_dts and declaration_transpiler
+    emit_tsc_js = emit_js and not emit_transpiler_js
+    emit_tsc_dts = emit_dts and not emit_transpiler_dts
 
-    tsc_typings_outs = _lib.calculate_typings_outs(srcs, typings_out_dir, root_dir, declaration, composite, allow_js)
-    tsc_typing_maps_outs = _lib.calculate_typing_maps_outs(srcs, typings_out_dir, root_dir, declaration_map, allow_js)
+    # Target names for tsc, dts+js transpilers
+    declarations_target_name = None
+    transpile_target_name = None
 
+    # typing predeclared outputs
+    tsc_typings_outs = []
+    tsc_typing_maps_outs = []
+    if emit_tsc_dts:
+        tsc_typings_outs = _lib.calculate_typings_outs(srcs, typings_out_dir, root_dir, declaration, composite, allow_js)
+        tsc_typing_maps_outs = _lib.calculate_typing_maps_outs(srcs, typings_out_dir, root_dir, declaration_map, allow_js)
+
+    # js predeclared outputs
     tsc_js_outs = []
     tsc_map_outs = []
-    if not transpiler or transpiler == "tsc":
+    if emit_tsc_js:
         tsc_js_outs = _lib.calculate_js_outs(srcs, out_dir, root_dir, allow_js, resolve_json_module, preserve_jsx, emit_declaration_only)
         tsc_map_outs = _lib.calculate_map_outs(srcs, out_dir, root_dir, source_map, preserve_jsx, emit_declaration_only)
-        tsc_target_name = name
-    else:
-        # To stitch together a tree of ts_project where transpiler is a separate rule,
-        # we have to produce a few targets
-        tsc_target_name = "%s_typings" % name
-        transpile_target_name = "%s_transpile" % name
-        typecheck_target_name = "%s_typecheck" % name
-        test_target_name = "%s_typecheck_test" % name
 
-        if type(transpiler) == "function" or type(transpiler) == "rule":
-            transpiler(
-                name = transpile_target_name,
-                srcs = srcs,
-                **common_kwargs
-            )
-        elif partial.is_instance(transpiler):
-            partial.call(
-                transpiler,
-                name = transpile_target_name,
-                srcs = srcs,
-                **common_kwargs
+    # Custom typing transpiler
+    if emit_transpiler_dts:
+        declarations_target_name = "%s_declarations" % name
+        _invoke_custom_transpiler("declaration_transpiler", declaration_transpiler, declarations_target_name, srcs, common_kwargs)
+
+    # Custom js transpiler
+    if emit_transpiler_js:
+        transpile_target_name = "%s_transpile" % name
+        _invoke_custom_transpiler("transpiler", transpiler, transpile_target_name, srcs, common_kwargs)
+
+    # Users should build this target to get typing files
+    types_target_name = "%s_types" % name
+    if not no_emit:
+        if declarations_target_name:
+            # A standalone target outputs the types
+            native.alias(
+                name = types_target_name,
+                actual = declarations_target_name,
             )
         else:
-            fail("transpiler attribute should be a rule/macro or a skylib partial. Got " + type(transpiler))
+            # tsc outputs the types and must be extracted via output_group
+            native.filegroup(
+                name = types_target_name,
+                srcs = [name],
+                output_group = "types",
+                **common_kwargs
+            )
+
+    # If the primary target does not output dts files then type-checking has a separate target.
+    if not emit_tsc_js or not emit_tsc_dts:
+        typecheck_target_name = "%s_typecheck" % name
+        test_target_name = "%s_typecheck_test" % name
 
         # Users should build this target to get a failed build when typechecking fails
         native.filegroup(
             name = typecheck_target_name,
-            srcs = [tsc_target_name],
-            # This causes the declarations to be produced, which in turn triggers the tsc action to typecheck
-            output_group = "types",
+            srcs = [name],
+            output_group = "typecheck",
             **common_kwargs
         )
 
@@ -376,23 +406,23 @@ def ts_project(
             visibility = common_kwargs.get("visibility"),
         )
 
-        # Default target produced by the macro gives the js and map outs, with the transitive dependencies.
-        js_library(
-            name = name,
-            # Include the tsc target in srcs to pick-up both the direct & transitive declaration outputs so
-            # that this js_library can be a valid dep for downstream ts_project or other rules_js derivative rules.
-            srcs = [transpile_target_name, tsc_target_name] + assets,
-            deps = deps,
-            data = data,
-            **common_kwargs
-        )
-
     # Disable workers if a custom tsc was provided but not a custom tsc_worker.
     if tsc != _tsc and tsc_worker == _tsc_worker:
         supports_workers = 0
 
+    # Disable typescript version detection if tsc is not the default:
+    # - it would be wrong anyways
+    # - it is only used to warn if worker support is configured incorrectly.
+    if tsc != _tsc or tsc_worker != _tsc_worker:
+        is_typescript_5_or_greater = None
+    else:
+        is_typescript_5_or_greater = select({
+            "@npm_typescript//:is_typescript_5_or_greater": True,
+            "//conditions:default": False,
+        })
+
     ts_project_rule(
-        name = tsc_target_name,
+        name = name,
         srcs = srcs,
         args = args,
         assets = assets,
@@ -405,6 +435,7 @@ def ts_project(
         incremental = incremental,
         preserve_jsx = preserve_jsx,
         composite = composite,
+        isolated_typecheck = isolated_typecheck,
         declaration = declaration,
         declaration_dir = declaration_dir,
         source_map = source_map,
@@ -416,18 +447,49 @@ def ts_project(
         map_outs = tsc_map_outs,
         typings_outs = tsc_typings_outs,
         typing_maps_outs = tsc_typing_maps_outs,
-        assets_outs = assets_outs,
         buildinfo_out = tsbuildinfo_path if composite or incremental else None,
+        no_emit = no_emit,
         emit_declaration_only = emit_declaration_only,
         tsc = tsc,
         tsc_worker = tsc_worker,
         transpile = -1 if not transpiler else int(transpiler == "tsc"),
+        declaration_transpile = declaration_transpiler != None,
+        pretranspiled_js = transpile_target_name,
+        pretranspiled_dts = declarations_target_name,
         supports_workers = supports_workers,
-        is_typescript_5_or_greater = select({
-            "@npm_typescript//:is_typescript_5_or_greater": True,
-            "//conditions:default": False,
-        }),
+        is_typescript_5_or_greater = is_typescript_5_or_greater,
         validate = validate,
         validator = validator,
         **kwargs
     )
+
+def _default_srcs(allow_js, resolve_json_module):
+    """Returns a list of srcs for ts_project when srcs is not provided."""
+    include = ["**/*.ts", "**/*.tsx"]
+    exclude = []
+
+    if allow_js == True:
+        include.extend(["**/*.js", "**/*.jsx"])
+
+    if resolve_json_module == True:
+        include.append("**/*.json")
+        exclude.extend(["**/package.json", "**/package-lock.json", "**/tsconfig*.json"])
+
+    return native.glob(include, exclude, allow_empty = True)
+
+def _invoke_custom_transpiler(type_str, transpiler, transpile_target_name, srcs, common_kwargs):
+    if type(transpiler) == "function" or type(transpiler) == "rule":
+        transpiler(
+            name = transpile_target_name,
+            srcs = srcs,
+            **common_kwargs
+        )
+    elif partial.is_instance(transpiler):
+        partial.call(
+            transpiler,
+            name = transpile_target_name,
+            srcs = srcs,
+            **common_kwargs
+        )
+    else:
+        fail("%s attribute should be a rule/macro or a skylib partial. Got %s" % (type_str, type(transpiler)))

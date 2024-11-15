@@ -2,9 +2,6 @@
     "compilerOptions": {
         "module": "ES2020",
         "moduleResolution": "node",
-        "lib": [
-            "ES2015",
-            "DOM"
-        ]
+        "lib": ["ES2015", "DOM"]
     }
 }

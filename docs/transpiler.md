@@ -11,7 +11,7 @@ Transpilation is mostly "erase the type syntax" and can be done well by a variet
 - Development activities which rely only on runtime code, like running tests or manually verifying behavior in a devserver, should not need to wait on type-checking.
 - Type-checking still needs to be verified before checking in the code, but only needs to be as fast as a typical test.
 
-Read more: https://blog.aspect.dev/typescript-speedup
+Read more: https://blog.aspect.build/typescript-speedup
 
 ## ts_project#transpiler
 
@@ -111,16 +111,17 @@ then `load()` from your own macro rather than from `@aspect_rules_ts`.
 
 ## Macro expansion
 
-When `transpiler` is used, then the `ts_project` macro expands to these targets:
+When `no_emit`, `transpiler` or `declaration_transpiler` is set, then the `ts_project` macro expands to these targets:
 
 - `[name]` - the default target which can be included in the `deps` of downstream rules.
     Note that it will successfully build *even if there are typecheck failures* because invoking `tsc` is not needed to produce the default outputs.
     This is considered a feature, as it allows you to have a faster development mode where type-checking is not on the critical path.
-- `[name]_typecheck` - provides typings (`.d.ts` files) as the default output.
+- `[name]_types` - provides typings (`.d.ts` files) as the default outputs.
+    This target is not created if `no_emit` is set.
+- `[name]_typecheck` - provides default outputs asserting type-checking has been run.
     Building this target always causes the typechecker to run.
 - `[name]_typecheck_test` - a [`build_test`] target which simply depends on the `[name]_typecheck` target.
     This ensures that typechecking will be run under `bazel test` with [`--build_tests_only`].
-- `[name]_typings` - internal target which runs the binary from the `tsc` attribute
 -  Any additional target(s) the custom transpiler rule/macro produces.
     (For example, some rules produce one target per TypeScript input file.)
 
@@ -143,11 +144,11 @@ ts_project(name = a) --foo.d.ts--> npm_package ---> npm_link_package ---> ts_pro
 In this diagram, we'd like to be able to change the TypeScript sources of `a` and then re-run the test target, without waiting for type-checking.
 However, since `foo.d.ts` is declared as an input to the `npm_package` rule, Bazel needs to produce it.
 
-To solve this, you can add the flag `--@aspect_rules_js//npm:exclude_declarations_from_npm_packages` to your `bazel` command.
+To solve this, you can add the flag `--@aspect_rules_js//npm:exclude_types_from_npm_packages` to your `bazel` command.
 
 Use this flag only for local development! You can add a line to your `.bazelrc` to make this easier to type, for example:
 
 ```
 # Run bazel --config=dev to choose these options:
-build:dev --@aspect_rules_js//npm:exclude_declarations_from_npm_packages
+build:dev --@aspect_rules_js//npm:exclude_types_from_npm_packages
 ```

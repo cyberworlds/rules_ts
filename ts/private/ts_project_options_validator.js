@@ -131,24 +131,16 @@ function main(_a) {
             )
         }
     }
-    if (options.noEmit) {
-        console.error(
-            'ERROR: ts_project rule ' +
-                target +
-                " cannot be built because the 'noEmit' option is specified in the tsconfig."
-        )
-        console.error(
-            'This is not compatible with ts_project, which always produces outputs.'
-        )
-        console.error(
-            '- If you mean to only typecheck the code, use the tsc_test rule instead.' +
-                '  (see https://github.com/aspect-build/rules_ts/tree/main/examples/typecheck_only)'
-        )
-        console.error('  (See the Alternatives section in the documentation.)')
-        console.error(
-            '- Otherwise, remove the noEmit option from tsconfig and try again.'
-        )
-        return 1
+    function check_nocheck() {
+        if (attrs.isolated_typecheck) {
+            var optionVal = getTsOption('isolatedDeclarations')
+            if (!optionVal) {
+                failures.push(
+                    'attribute isolated_typecheck=True requires compilerOptions.isolatedDeclarations=true\nSee documentation on ts_project(isolated_typecheck) for more info"'
+                )
+                buildozerCmds.push('set isolated_typecheck False')
+            }
+        }
     }
     if (options.preserveSymlinks) {
         console.error(
@@ -163,6 +155,7 @@ function main(_a) {
     }
     check('allowJs', 'allow_js')
     check('declarationMap', 'declaration_map')
+    check('noEmit', 'no_emit')
     check('emitDeclarationOnly', 'emit_declaration_only')
     check('resolveJsonModule', 'resolve_json_module')
     check('sourceMap', 'source_map')
@@ -170,6 +163,7 @@ function main(_a) {
     check('declaration')
     check('incremental')
     check('tsBuildInfoFile', 'ts_build_info_file')
+    check_nocheck()
     check_preserve_jsx()
     if (failures.length > 0) {
         console.error(
@@ -211,6 +205,8 @@ function main(_a) {
             attrs.incremental +
             '\n// source_map:            ' +
             attrs.source_map +
+            '\n// no_emit:               ' +
+            attrs.no_emit +
             '\n// emit_declaration_only: ' +
             attrs.emit_declaration_only +
             '\n// ts_build_info_file:    ' +

@@ -1,35 +1,62 @@
 load("@aspect_rules_js//npm:defs.bzl", "npm_link_package")
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 
-# Building this target results in bazel-bin/examples/node_modules/@myorg/js_lib, so that
+# Building this target results in bazel-bin/examples/node_modules/@myorg/js_pkg, so that
 # TypeScript and other node programs beneath bazel-bin/examples are able to resolve its location.
 npm_link_package(
+    name = "node_modules/@myorg/js_pkg",
+    src = "//examples/js_pkg:pkg",
+    root_package = "examples",
+    visibility = ["//examples:__subpackages__"],
+)
+
+npm_link_package(
     name = "node_modules/@myorg/js_lib",
-    src = "//examples/js_lib",
+    src = "//examples/js_lib:pkg",
+    package = "@myorg/js_lib",
     root_package = "examples",
     visibility = ["//examples:__subpackages__"],
 )
 
 npm_link_package(
-    name = "node_modules/@myorg/dts_lib",
-    src = "//examples/dts_lib",
+    name = "node_modules/@myorg/dts_pkg",
+    src = "//examples/dts_pkg:pkg",
     root_package = "examples",
     visibility = ["//examples:__subpackages__"],
 )
 
 npm_link_package(
-    name = "node_modules/@myorg/deps_lib",
-    src = "//examples/deps_lib",
+    name = "node_modules/@myorg/lib_nocompile",
+    src = "//examples/lib_nocompile:pkg",
+    package = "@myorg/lib_nocompile",
     root_package = "examples",
     visibility = ["//examples:__subpackages__"],
 )
 
 npm_link_package(
-    name = "node_modules/@myorg/deps_lib_transpiler",
-    src = "//examples/deps_lib_transpiler",
+    name = "node_modules/@myorg/deps_pkg",
+    src = "//examples/deps_pkg:pkg",
+    root_package = "examples",
+    visibility = ["//examples:__subpackages__"],
+)
+
+npm_link_package(
+    name = "node_modules/@myorg/deps_pkg_transpiler",
+    src = "//examples/deps_pkg_transpiler:pkg",
     root_package = "examples",
     visibility = ["//examples:__subpackages__"],
 )
 
 # This macro expands to a npm_link_package for each third-party package in package.json
 npm_link_all_packages(name = "node_modules")
+
+# Direct references to linked non-compiling js_library packages should not force typechecking
+# for both `npm_link_package` and `workspace:*` linked packages.
+build_test(
+    name = "linked_non_compiling",
+    targets = [
+        ":node_modules/@myorg/lib_nocompile",
+        ":node_modules/@myorg/lib_nocompile_linked",
+    ],
+)

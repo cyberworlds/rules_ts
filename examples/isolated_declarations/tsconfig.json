@@ -1,0 +1,6 @@
+{
+    "compilerOptions": {
+        "isolatedDeclarations": true,
+        "declaration": true
+    }
+}

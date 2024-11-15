@@ -7,7 +7,8 @@ npm_link_all_packages(name = "node_modules")
 js_test(
     name = "direct",
     data = [
-        "//examples/linked:ts_lib",
+        "//examples/linked_lib:lib",
+        "//examples/linked_pkg:lib",
     ],
     entry_point = "test_file_all_linked.js",
 )
@@ -17,6 +18,18 @@ js_test(
     name = "pkg",
     data = [
         ":node_modules/@lib/test",
+        ":node_modules/@lib/test2",
     ],
     entry_point = "test_pkg_deps_linked.js",
+)
+
+# References to non-compiling js_library packages should not force typechecking when
+# consumed by a js_test that does not require dts type information.
+js_test(
+    name = "pkg_no_typechecking",
+    data = [
+        ":node_modules/@myorg/lib_nocompile_linked",
+        "//examples:node_modules/@myorg/lib_nocompile",
+    ],
+    entry_point = "test_pkg_nocompile_linked.js",
 )

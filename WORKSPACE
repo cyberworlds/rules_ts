@@ -16,11 +16,9 @@ load("@aspect_rules_js//js:repositories.bzl", "rules_js_dependencies")
 
 rules_js_dependencies()
 
-load("@aspect_bazel_lib//lib:repositories.bzl", "aspect_bazel_lib_dependencies", "register_coreutils_toolchains")
+load("@aspect_rules_js//js:toolchains.bzl", "DEFAULT_NODE_VERSION", "rules_js_register_toolchains")
 
-aspect_bazel_lib_dependencies()
-
-register_coreutils_toolchains()
+rules_js_register_toolchains(node_version = DEFAULT_NODE_VERSION)
 
 load("@rules_nodejs//nodejs:repositories.bzl", "nodejs_register_toolchains")
 
@@ -29,17 +27,39 @@ nodejs_register_toolchains(
     node_version = "18.12.0",
 )
 
-load("@aspect_rules_swc//swc:repositories.bzl", "LATEST_SWC_VERSION", "swc_register_toolchains")
-
-swc_register_toolchains(
-    name = "swc",
-    swc_version = LATEST_SWC_VERSION,
-)
-
 # For running our own unit tests
 load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 
 bazel_skylib_workspace()
+
+######################
+# toolchains_protoc setup #
+######################
+# Fetches the toolchains_protoc dependencies.
+# If you want to have a different version of some dependency,
+# you should fetch it *before* calling this.
+# Alternatively, you can skip calling this function, so long as you've
+# already fetched all the dependencies.
+load("@toolchains_protoc//protoc:repositories.bzl", "rules_protoc_dependencies")
+
+rules_protoc_dependencies()
+
+load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies")
+
+rules_proto_dependencies()
+
+load("@bazel_features//:deps.bzl", "bazel_features_deps")
+
+bazel_features_deps()
+
+load("@toolchains_protoc//protoc:toolchain.bzl", "protoc_toolchains")
+
+protoc_toolchains(
+    name = "protoc_toolchains",
+    version = "v25.3",
+)
+
+register_toolchains("//tools/toolchains:all")
 
 ############################################
 # Gazelle, for generating bzl_library targets
@@ -85,7 +105,7 @@ buildifier_prebuilt_register_toolchains()
 
 ###########################################
 # A pnpm workspace so we can test 3p deps
-load("@aspect_rules_js//npm:npm_import.bzl", "npm_translate_lock")
+load("@aspect_rules_js//npm:repositories.bzl", "npm_translate_lock")
 
 npm_translate_lock(
     name = "npm",
@@ -102,13 +122,7 @@ npm_repositories()
 # bazel run -- @npm_typescript//:tsc --version
 rules_ts_dependencies(ts_version_from = "@npm//examples:typescript/resolved.json")
 
-load("@bazel_features//:deps.bzl", "bazel_features_deps")
-
 bazel_features_deps()
-
-###########################################
-# Protobuf rules to test ts_proto_library
-load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies")
 
 rules_proto_dependencies()
 

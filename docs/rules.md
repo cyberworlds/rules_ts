@@ -10,6 +10,8 @@ inputs and produces JavaScript or declaration (.d.ts) outputs.
 ## ts_config
 
 <pre>
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config")
+
 ts_config(<a href="#ts_config-name">name</a>, <a href="#ts_config-deps">deps</a>, <a href="#ts_config-src">src</a>)
 </pre>
 
@@ -35,12 +37,15 @@ extended configuration file as well, to pass them both to the TypeScript compile
 ## ts_project_rule
 
 <pre>
-ts_project_rule(<a href="#ts_project_rule-name">name</a>, <a href="#ts_project_rule-deps">deps</a>, <a href="#ts_project_rule-srcs">srcs</a>, <a href="#ts_project_rule-data">data</a>, <a href="#ts_project_rule-allow_js">allow_js</a>, <a href="#ts_project_rule-args">args</a>, <a href="#ts_project_rule-assets">assets</a>, <a href="#ts_project_rule-assets_outs">assets_outs</a>, <a href="#ts_project_rule-buildinfo_out">buildinfo_out</a>,
-                <a href="#ts_project_rule-composite">composite</a>, <a href="#ts_project_rule-declaration">declaration</a>, <a href="#ts_project_rule-declaration_dir">declaration_dir</a>, <a href="#ts_project_rule-declaration_map">declaration_map</a>, <a href="#ts_project_rule-emit_declaration_only">emit_declaration_only</a>,
-                <a href="#ts_project_rule-extends">extends</a>, <a href="#ts_project_rule-incremental">incremental</a>, <a href="#ts_project_rule-is_typescript_5_or_greater">is_typescript_5_or_greater</a>, <a href="#ts_project_rule-js_outs">js_outs</a>, <a href="#ts_project_rule-map_outs">map_outs</a>, <a href="#ts_project_rule-out_dir">out_dir</a>,
-                <a href="#ts_project_rule-preserve_jsx">preserve_jsx</a>, <a href="#ts_project_rule-resolve_json_module">resolve_json_module</a>, <a href="#ts_project_rule-root_dir">root_dir</a>, <a href="#ts_project_rule-source_map">source_map</a>, <a href="#ts_project_rule-supports_workers">supports_workers</a>, <a href="#ts_project_rule-transpile">transpile</a>,
-                <a href="#ts_project_rule-ts_build_info_file">ts_build_info_file</a>, <a href="#ts_project_rule-tsc">tsc</a>, <a href="#ts_project_rule-tsc_worker">tsc_worker</a>, <a href="#ts_project_rule-tsconfig">tsconfig</a>, <a href="#ts_project_rule-typing_maps_outs">typing_maps_outs</a>, <a href="#ts_project_rule-typings_outs">typings_outs</a>,
-                <a href="#ts_project_rule-validate">validate</a>, <a href="#ts_project_rule-validator">validator</a>)
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project_rule")
+
+ts_project_rule(<a href="#ts_project_rule-name">name</a>, <a href="#ts_project_rule-deps">deps</a>, <a href="#ts_project_rule-srcs">srcs</a>, <a href="#ts_project_rule-data">data</a>, <a href="#ts_project_rule-allow_js">allow_js</a>, <a href="#ts_project_rule-args">args</a>, <a href="#ts_project_rule-assets">assets</a>, <a href="#ts_project_rule-buildinfo_out">buildinfo_out</a>, <a href="#ts_project_rule-composite">composite</a>,
+                <a href="#ts_project_rule-declaration">declaration</a>, <a href="#ts_project_rule-declaration_dir">declaration_dir</a>, <a href="#ts_project_rule-declaration_map">declaration_map</a>, <a href="#ts_project_rule-declaration_transpile">declaration_transpile</a>,
+                <a href="#ts_project_rule-emit_declaration_only">emit_declaration_only</a>, <a href="#ts_project_rule-extends">extends</a>, <a href="#ts_project_rule-incremental">incremental</a>, <a href="#ts_project_rule-is_typescript_5_or_greater">is_typescript_5_or_greater</a>,
+                <a href="#ts_project_rule-isolated_typecheck">isolated_typecheck</a>, <a href="#ts_project_rule-js_outs">js_outs</a>, <a href="#ts_project_rule-map_outs">map_outs</a>, <a href="#ts_project_rule-no_emit">no_emit</a>, <a href="#ts_project_rule-out_dir">out_dir</a>, <a href="#ts_project_rule-preserve_jsx">preserve_jsx</a>,
+                <a href="#ts_project_rule-pretranspiled_dts">pretranspiled_dts</a>, <a href="#ts_project_rule-pretranspiled_js">pretranspiled_js</a>, <a href="#ts_project_rule-resolve_json_module">resolve_json_module</a>, <a href="#ts_project_rule-resource_set">resource_set</a>, <a href="#ts_project_rule-root_dir">root_dir</a>,
+                <a href="#ts_project_rule-source_map">source_map</a>, <a href="#ts_project_rule-supports_workers">supports_workers</a>, <a href="#ts_project_rule-transpile">transpile</a>, <a href="#ts_project_rule-ts_build_info_file">ts_build_info_file</a>, <a href="#ts_project_rule-tsc">tsc</a>, <a href="#ts_project_rule-tsc_worker">tsc_worker</a>,
+                <a href="#ts_project_rule-tsconfig">tsconfig</a>, <a href="#ts_project_rule-typing_maps_outs">typing_maps_outs</a>, <a href="#ts_project_rule-typings_outs">typings_outs</a>, <a href="#ts_project_rule-validate">validate</a>, <a href="#ts_project_rule-validator">validator</a>)
 </pre>
 
 Implementation rule behind the ts_project macro.
@@ -55,27 +60,32 @@ for srcs and tsconfig, and pre-declaring output files.
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="ts_project_rule-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
-| <a id="ts_project_rule-deps"></a>deps |  List of targets that produce TypeScript typings (`.d.ts` files)<br><br>If this list contains linked npm packages, npm package store targets or other targets that provide `JsInfo`, `NpmPackageStoreInfo` providers are gathered from `JsInfo`. This is done directly from the `npm_package_store_deps` field of these. For linked npm package targets, the underlying `npm_package_store` target(s) that back the links is used. Gathered `NpmPackageStoreInfo` providers are propagated to the direct dependencies of downstream linked `npm_package` targets.<br><br>NB: Linked npm package targets that are "dev" dependencies do not forward their underlying `npm_package_store` target(s) through `npm_package_store_deps` and will therefore not be propagated to the direct dependencies of downstream linked `npm_package` targets. npm packages that come in from `npm_translate_lock` are considered "dev" dependencies if they are have `dev: true` set in the pnpm lock file. This should be all packages that are only listed as "devDependencies" in all `package.json` files within the pnpm workspace. This behavior is intentional to mimic how `devDependencies` work in published npm packages.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
+| <a id="ts_project_rule-deps"></a>deps |  List of targets that produce TypeScript typings (`.d.ts` files)<br><br>Follows the same runfiles semantics as `js_library` `deps` attribute. See https://docs.aspect.build/rulesets/aspect_rules_js/docs/js_library#deps for more info.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
 | <a id="ts_project_rule-srcs"></a>srcs |  TypeScript source files   | <a href="https://bazel.build/concepts/labels">List of labels</a> | required |  |
-| <a id="ts_project_rule-data"></a>data |  Runtime dependencies to include in binaries/tests that depend on this target.<br><br>The transitive npm dependencies, transitive sources, default outputs and runfiles of targets in the `data` attribute are added to the runfiles of this target. They should appear in the '*.runfiles' area of any executable which has a runtime dependency on this target.<br><br>If this list contains linked npm packages, npm package store targets or other targets that provide `JsInfo`, `NpmPackageStoreInfo` providers are gathered from `JsInfo`. This is done directly from the `npm_package_store_deps` field of these. For linked npm package targets, the underlying `npm_package_store` target(s) that back the links is used. Gathered `NpmPackageStoreInfo` providers are propagated to the direct dependencies of downstream linked `npm_package` targets.<br><br>NB: Linked npm package targets that are "dev" dependencies do not forward their underlying `npm_package_store` target(s) through `npm_package_store_deps` and will therefore not be propagated to the direct dependencies of downstream linked `npm_package` targets. npm packages that come in from `npm_translate_lock` are considered "dev" dependencies if they are have `dev: true` set in the pnpm lock file. This should be all packages that are only listed as "devDependencies" in all `package.json` files within the pnpm workspace. This behavior is intentional to mimic how `devDependencies` work in published npm packages.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
+| <a id="ts_project_rule-data"></a>data |  Runtime dependencies to include in binaries/tests that depend on this target.<br><br>Follows the same semantics as `js_library` `data` attribute. See https://docs.aspect.build/rulesets/aspect_rules_js/docs/js_library#data for more info.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
 | <a id="ts_project_rule-allow_js"></a>allow_js |  https://www.typescriptlang.org/tsconfig#allowJs   | Boolean | optional |  `False`  |
 | <a id="ts_project_rule-args"></a>args |  https://www.typescriptlang.org/docs/handbook/compiler-options.html   | List of strings | optional |  `[]`  |
 | <a id="ts_project_rule-assets"></a>assets |  Files which are needed by a downstream build step such as a bundler.<br><br>See more details on the `assets` parameter of the `ts_project` macro.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
-| <a id="ts_project_rule-assets_outs"></a>assets_outs |  Locations in bazel-out where ts_project will output asset files   | List of labels | optional |  `[]`  |
 | <a id="ts_project_rule-buildinfo_out"></a>buildinfo_out |  Location in bazel-out where tsc will write a `.tsbuildinfo` file   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
 | <a id="ts_project_rule-composite"></a>composite |  https://www.typescriptlang.org/tsconfig#composite   | Boolean | optional |  `False`  |
 | <a id="ts_project_rule-declaration"></a>declaration |  https://www.typescriptlang.org/tsconfig#declaration   | Boolean | optional |  `False`  |
 | <a id="ts_project_rule-declaration_dir"></a>declaration_dir |  https://www.typescriptlang.org/tsconfig#declarationDir   | String | optional |  `""`  |
 | <a id="ts_project_rule-declaration_map"></a>declaration_map |  https://www.typescriptlang.org/tsconfig#declarationMap   | Boolean | optional |  `False`  |
+| <a id="ts_project_rule-declaration_transpile"></a>declaration_transpile |  Whether tsc should be used to produce .d.ts outputs   | Boolean | optional |  `False`  |
 | <a id="ts_project_rule-emit_declaration_only"></a>emit_declaration_only |  https://www.typescriptlang.org/tsconfig#emitDeclarationOnly   | Boolean | optional |  `False`  |
 | <a id="ts_project_rule-extends"></a>extends |  https://www.typescriptlang.org/tsconfig#extends   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
 | <a id="ts_project_rule-incremental"></a>incremental |  https://www.typescriptlang.org/tsconfig#incremental   | Boolean | optional |  `False`  |
 | <a id="ts_project_rule-is_typescript_5_or_greater"></a>is_typescript_5_or_greater |  Whether TypeScript version is >= 5.0.0   | Boolean | optional |  `False`  |
+| <a id="ts_project_rule-isolated_typecheck"></a>isolated_typecheck |  Whether type-checking should be a separate action.<br><br>This allows the transpilation action to run without waiting for typings from dependencies.<br><br>Requires a minimum version of typescript 5.6 for the [noCheck](https://www.typescriptlang.org/tsconfig#noCheck) flag which is automatically set on the transpilation action when the typecheck action is isolated.<br><br>Requires [isolatedDeclarations](https://www.typescriptlang.org/tsconfig#isolatedDeclarations) to be set so that declarations can be emitted without dependencies. The use of `isolatedDeclarations` may require significant changes to your codebase and should be done as a pre-requisite to enabling `isolated_typecheck`.   | Boolean | optional |  `False`  |
 | <a id="ts_project_rule-js_outs"></a>js_outs |  Locations in bazel-out where tsc will write `.js` files   | List of labels | optional |  `[]`  |
 | <a id="ts_project_rule-map_outs"></a>map_outs |  Locations in bazel-out where tsc will write `.js.map` files   | List of labels | optional |  `[]`  |
+| <a id="ts_project_rule-no_emit"></a>no_emit |  https://www.typescriptlang.org/tsconfig#noEmit   | Boolean | optional |  `False`  |
 | <a id="ts_project_rule-out_dir"></a>out_dir |  https://www.typescriptlang.org/tsconfig#outDir   | String | optional |  `""`  |
 | <a id="ts_project_rule-preserve_jsx"></a>preserve_jsx |  https://www.typescriptlang.org/tsconfig#jsx   | Boolean | optional |  `False`  |
+| <a id="ts_project_rule-pretranspiled_dts"></a>pretranspiled_dts |  Externally transpiled .d.ts to be included in output providers   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
+| <a id="ts_project_rule-pretranspiled_js"></a>pretranspiled_js |  Externally transpiled .js to be included in output providers   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
 | <a id="ts_project_rule-resolve_json_module"></a>resolve_json_module |  https://www.typescriptlang.org/tsconfig#resolveJsonModule   | Boolean | optional |  `False`  |
+| <a id="ts_project_rule-resource_set"></a>resource_set |  A predefined function used as the resource_set for actions.<br><br>Used with --experimental_action_resource_set to reserve more RAM/CPU, preventing Bazel overscheduling resource-intensive actions.<br><br>By default, Bazel allocates 1 CPU and 250M of RAM. https://github.com/bazelbuild/bazel/blob/058f943037e21710837eda9ca2f85b5f8538c8c5/src/main/java/com/google/devtools/build/lib/actions/AbstractAction.java#L77   | String | optional |  `"default"`  |
 | <a id="ts_project_rule-root_dir"></a>root_dir |  https://www.typescriptlang.org/tsconfig#rootDir   | String | optional |  `""`  |
 | <a id="ts_project_rule-source_map"></a>source_map |  https://www.typescriptlang.org/tsconfig#sourceMap   | Boolean | optional |  `False`  |
 | <a id="ts_project_rule-supports_workers"></a>supports_workers |  Whether to use a custom `tsc` compiler which understands Bazel's persistent worker protocol.<br><br>See the docs for `supports_workers` on the [`ts_project`](#ts_project-supports_workers) macro.   | Integer | optional |  `0`  |
@@ -90,49 +100,13 @@ for srcs and tsconfig, and pre-declaring output files.
 | <a id="ts_project_rule-validator"></a>validator |  -   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
 
 
-<a id="validate_options"></a>
-
-## validate_options
-
-<pre>
-validate_options(<a href="#validate_options-name">name</a>, <a href="#validate_options-deps">deps</a>, <a href="#validate_options-allow_js">allow_js</a>, <a href="#validate_options-composite">composite</a>, <a href="#validate_options-declaration">declaration</a>, <a href="#validate_options-declaration_map">declaration_map</a>,
-                 <a href="#validate_options-emit_declaration_only">emit_declaration_only</a>, <a href="#validate_options-extends">extends</a>, <a href="#validate_options-incremental">incremental</a>, <a href="#validate_options-preserve_jsx">preserve_jsx</a>, <a href="#validate_options-resolve_json_module">resolve_json_module</a>,
-                 <a href="#validate_options-source_map">source_map</a>, <a href="#validate_options-target">target</a>, <a href="#validate_options-ts_build_info_file">ts_build_info_file</a>, <a href="#validate_options-tsconfig">tsconfig</a>, <a href="#validate_options-validator">validator</a>)
-</pre>
-
-DEPRECATED. Use Validation Actions instead.
-
-Validates that some tsconfig.json properties match attributes on ts_project.
-See the documentation of [`ts_project`](#ts_project) for more information.
-
-**ATTRIBUTES**
-
-
-| Name  | Description | Type | Mandatory | Default |
-| :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="validate_options-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
-| <a id="validate_options-deps"></a>deps |  -   | <a href="https://bazel.build/concepts/labels">List of labels</a> | required |  |
-| <a id="validate_options-allow_js"></a>allow_js |  https://www.typescriptlang.org/tsconfig#allowJs   | Boolean | optional |  `False`  |
-| <a id="validate_options-composite"></a>composite |  https://www.typescriptlang.org/tsconfig#composite   | Boolean | optional |  `False`  |
-| <a id="validate_options-declaration"></a>declaration |  https://www.typescriptlang.org/tsconfig#declaration   | Boolean | optional |  `False`  |
-| <a id="validate_options-declaration_map"></a>declaration_map |  https://www.typescriptlang.org/tsconfig#declarationMap   | Boolean | optional |  `False`  |
-| <a id="validate_options-emit_declaration_only"></a>emit_declaration_only |  https://www.typescriptlang.org/tsconfig#emitDeclarationOnly   | Boolean | optional |  `False`  |
-| <a id="validate_options-extends"></a>extends |  https://www.typescriptlang.org/tsconfig#extends   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
-| <a id="validate_options-incremental"></a>incremental |  https://www.typescriptlang.org/tsconfig#incremental   | Boolean | optional |  `False`  |
-| <a id="validate_options-preserve_jsx"></a>preserve_jsx |  https://www.typescriptlang.org/tsconfig#jsx   | Boolean | optional |  `False`  |
-| <a id="validate_options-resolve_json_module"></a>resolve_json_module |  https://www.typescriptlang.org/tsconfig#resolveJsonModule   | Boolean | optional |  `False`  |
-| <a id="validate_options-source_map"></a>source_map |  https://www.typescriptlang.org/tsconfig#sourceMap   | Boolean | optional |  `False`  |
-| <a id="validate_options-target"></a>target |  -   | String | optional |  `""`  |
-| <a id="validate_options-ts_build_info_file"></a>ts_build_info_file |  -   | String | optional |  `""`  |
-| <a id="validate_options-tsconfig"></a>tsconfig |  -   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
-| <a id="validate_options-validator"></a>validator |  -   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
-
-
 <a id="TsConfigInfo"></a>
 
 ## TsConfigInfo
 
 <pre>
+load("@aspect_rules_ts//ts:defs.bzl", "TsConfigInfo")
+
 TsConfigInfo(<a href="#TsConfigInfo-deps">deps</a>)
 </pre>
 
@@ -141,7 +115,6 @@ along with any transitively referenced tsconfig.json files chained by the
 "extends" feature
 
 **FIELDS**
-
 
 | Name  | Description |
 | :------------- | :------------- |
@@ -153,10 +126,13 @@ along with any transitively referenced tsconfig.json files chained by the
 ## ts_project
 
 <pre>
-ts_project(<a href="#ts_project-name">name</a>, <a href="#ts_project-tsconfig">tsconfig</a>, <a href="#ts_project-srcs">srcs</a>, <a href="#ts_project-args">args</a>, <a href="#ts_project-data">data</a>, <a href="#ts_project-deps">deps</a>, <a href="#ts_project-assets">assets</a>, <a href="#ts_project-extends">extends</a>, <a href="#ts_project-allow_js">allow_js</a>, <a href="#ts_project-declaration">declaration</a>,
-           <a href="#ts_project-source_map">source_map</a>, <a href="#ts_project-declaration_map">declaration_map</a>, <a href="#ts_project-resolve_json_module">resolve_json_module</a>, <a href="#ts_project-preserve_jsx">preserve_jsx</a>, <a href="#ts_project-composite">composite</a>, <a href="#ts_project-incremental">incremental</a>,
-           <a href="#ts_project-emit_declaration_only">emit_declaration_only</a>, <a href="#ts_project-transpiler">transpiler</a>, <a href="#ts_project-ts_build_info_file">ts_build_info_file</a>, <a href="#ts_project-tsc">tsc</a>, <a href="#ts_project-tsc_worker">tsc_worker</a>, <a href="#ts_project-validate">validate</a>,
-           <a href="#ts_project-validator">validator</a>, <a href="#ts_project-declaration_dir">declaration_dir</a>, <a href="#ts_project-out_dir">out_dir</a>, <a href="#ts_project-root_dir">root_dir</a>, <a href="#ts_project-supports_workers">supports_workers</a>, <a href="#ts_project-kwargs">kwargs</a>)
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+ts_project(<a href="#ts_project-name">name</a>, <a href="#ts_project-tsconfig">tsconfig</a>, <a href="#ts_project-srcs">srcs</a>, <a href="#ts_project-args">args</a>, <a href="#ts_project-data">data</a>, <a href="#ts_project-deps">deps</a>, <a href="#ts_project-assets">assets</a>, <a href="#ts_project-extends">extends</a>, <a href="#ts_project-allow_js">allow_js</a>, <a href="#ts_project-isolated_typecheck">isolated_typecheck</a>,
+           <a href="#ts_project-declaration">declaration</a>, <a href="#ts_project-source_map">source_map</a>, <a href="#ts_project-declaration_map">declaration_map</a>, <a href="#ts_project-resolve_json_module">resolve_json_module</a>, <a href="#ts_project-preserve_jsx">preserve_jsx</a>, <a href="#ts_project-composite">composite</a>,
+           <a href="#ts_project-incremental">incremental</a>, <a href="#ts_project-no_emit">no_emit</a>, <a href="#ts_project-emit_declaration_only">emit_declaration_only</a>, <a href="#ts_project-transpiler">transpiler</a>, <a href="#ts_project-declaration_transpiler">declaration_transpiler</a>,
+           <a href="#ts_project-ts_build_info_file">ts_build_info_file</a>, <a href="#ts_project-tsc">tsc</a>, <a href="#ts_project-tsc_worker">tsc_worker</a>, <a href="#ts_project-validate">validate</a>, <a href="#ts_project-validator">validator</a>, <a href="#ts_project-declaration_dir">declaration_dir</a>, <a href="#ts_project-out_dir">out_dir</a>,
+           <a href="#ts_project-root_dir">root_dir</a>, <a href="#ts_project-supports_workers">supports_workers</a>, <a href="#ts_project-kwargs">kwargs</a>)
 </pre>
 
 Compiles one TypeScript project using `tsc --project`.
@@ -195,6 +171,7 @@ If you have problems getting your `ts_project` to work correctly, read the dedic
 | <a id="ts_project-assets"></a>assets |  Files which are needed by a downstream build step such as a bundler.<br><br>These files are **not** included as inputs to any actions spawned by `ts_project`. They are not transpiled, and are not visible to the type-checker. Instead, these files appear among the *outputs* of this target.<br><br>A typical use is when your TypeScript code has an import that TS itself doesn't understand such as<br><br>`import './my.scss'`<br><br>and the type-checker allows this because you have an "ambient" global type declaration like<br><br>`declare module '*.scss' { ... }`<br><br>A bundler like webpack will expect to be able to resolve the `./my.scss` import to a file and doesn't care about the typing declaration. A bundler runs as a build step, so it does not see files included in the `data` attribute.<br><br>Note that `data` is used for files that are resolved by some binary, including a test target. Behind the scenes, `data` populates Bazel's Runfiles object in `DefaultInfo`, while this attribute populates the `transitive_sources` of the `JsInfo`.   |  `[]` |
 | <a id="ts_project-extends"></a>extends |  Label of the tsconfig file referenced in the `extends` section of tsconfig To support "chaining" of more than one extended config, this label could be a target that provdes `TsConfigInfo` such as `ts_config`.   |  `None` |
 | <a id="ts_project-allow_js"></a>allow_js |  Whether TypeScript will read .js and .jsx files. When used with `declaration`, TypeScript will generate `.d.ts` files from `.js` files.   |  `False` |
+| <a id="ts_project-isolated_typecheck"></a>isolated_typecheck |  Whether to type-check asynchronously as a separate bazel action. Requires https://devblogs.microsoft.com/typescript/announcing-typescript-5-6/#the---nocheck-option6 Requires https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-5.html#isolated-declarations   |  `False` |
 | <a id="ts_project-declaration"></a>declaration |  Whether the `declaration` bit is set in the tsconfig. Instructs Bazel to expect a `.d.ts` output for each `.ts` source.   |  `False` |
 | <a id="ts_project-source_map"></a>source_map |  Whether the `sourceMap` bit is set in the tsconfig. Instructs Bazel to expect a `.js.map` output for each `.ts` source.   |  `False` |
 | <a id="ts_project-declaration_map"></a>declaration_map |  Whether the `declarationMap` bit is set in the tsconfig. Instructs Bazel to expect a `.d.ts.map` output for each `.ts` source.   |  `False` |
@@ -202,8 +179,10 @@ If you have problems getting your `ts_project` to work correctly, read the dedic
 | <a id="ts_project-preserve_jsx"></a>preserve_jsx |  Whether the `jsx` value is set to "preserve" in the tsconfig. Instructs Bazel to expect a `.jsx` or `.jsx.map` output for each `.tsx` source.   |  `False` |
 | <a id="ts_project-composite"></a>composite |  Whether the `composite` bit is set in the tsconfig. Instructs Bazel to expect a `.tsbuildinfo` output and a `.d.ts` output for each `.ts` source.   |  `False` |
 | <a id="ts_project-incremental"></a>incremental |  Whether the `incremental` bit is set in the tsconfig. Instructs Bazel to expect a `.tsbuildinfo` output.   |  `False` |
+| <a id="ts_project-no_emit"></a>no_emit |  Whether the `noEmit` bit is set in the tsconfig. Instructs Bazel *not* to expect any outputs.   |  `False` |
 | <a id="ts_project-emit_declaration_only"></a>emit_declaration_only |  Whether the `emitDeclarationOnly` bit is set in the tsconfig. Instructs Bazel *not* to expect `.js` or `.js.map` outputs for `.ts` sources.   |  `False` |
-| <a id="ts_project-transpiler"></a>transpiler |  A custom transpiler tool to run that produces the JavaScript outputs instead of `tsc`.<br><br>Under `--@aspect_rules_ts//ts:default_to_tsc_transpiler`, the default is to use `tsc` to produce `.js` outputs in the same action that does the type-checking to produce `.d.ts` outputs. This is the simplest configuration, however `tsc` is slower than alternatives. It also means developers must wait for the type-checking in the developer loop.<br><br>Without `--@aspect_rules_ts//ts:default_to_tsc_transpiler`, an explicit value must be set. This may be the string `"tsc"` to explicitly choose `tsc`, just like the default above.<br><br>It may also be any rule or macro with this signature: `(name, srcs, **kwargs)`<br><br>See [docs/transpiler.md](/docs/transpiler.md) for more details.   |  `None` |
+| <a id="ts_project-transpiler"></a>transpiler |  A custom transpiler tool to run that produces the JavaScript outputs instead of `tsc`.<br><br>Under `--@aspect_rules_ts//ts:default_to_tsc_transpiler`, the default is to use `tsc` to produce `.js` outputs in the same action that does the type-checking to produce `.d.ts` outputs. This is the simplest configuration, however `tsc` is slower than alternatives. It also means developers must wait for the type-checking in the developer loop.<br><br>Without `--@aspect_rules_ts//ts:default_to_tsc_transpiler`, an explicit value must be set. This may be the string `"tsc"` to explicitly choose `tsc`, just like the default above.<br><br>It may also be any rule or macro with this signature: `(name, srcs, **kwargs)`<br><br>If JavaScript outputs are configured to not be emitted the custom transpiler will not be used, such as when `no_emit = True` or `emit_declaration_only = True`.<br><br>See [docs/transpiler.md](/docs/transpiler.md) for more details.   |  `None` |
+| <a id="ts_project-declaration_transpiler"></a>declaration_transpiler |  A custom transpiler tool to run that produces the TypeScript declaration outputs instead of `tsc`.<br><br>It may be any rule or macro with this signature: `(name, srcs, **kwargs)`<br><br>If TypeScript declaration outputs are configured to not be emitted the custom declaration transpiler will not be used, such as when `no_emit = True` or `declaration = False`.<br><br>See [docs/transpiler.md](/docs/transpiler.md) for more details.   |  `None` |
 | <a id="ts_project-ts_build_info_file"></a>ts_build_info_file |  The user-specified value of `tsBuildInfoFile` from the tsconfig. Helps Bazel to predict the path where the .tsbuildinfo output is written.   |  `None` |
 | <a id="ts_project-tsc"></a>tsc |  Label of the TypeScript compiler binary to run. This allows you to use a custom API-compatible compiler in place of the regular `tsc` such as a custom `js_binary` or Angular's `ngc`. compatible with it such as Angular's `ngc`.<br><br>See examples of use in [examples/custom_compiler](https://github.com/aspect-build/rules_ts/blob/main/examples/custom_compiler/BUILD.bazel)   |  `"@npm_typescript//:tsc"` |
 | <a id="ts_project-tsc_worker"></a>tsc_worker |  Label of a custom TypeScript compiler binary which understands Bazel's persistent worker protocol.   |  `"@npm_typescript//:tsc_worker"` |
